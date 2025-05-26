@@ -3,6 +3,7 @@ const { generateVietnameseName,
     generateStrongPassword,
     appendLog,
     runGetMail, waitForOTPWithTimeout } = require("./utils/gen.js");
+
 require('chromedriver');
 const chrome = require('selenium-webdriver/chrome');
 const { run } = require('node:test');
@@ -40,6 +41,7 @@ async function sleep(ms) {
 
 async function openInstagramSignup(account) {
     let options = new chrome.Options();
+    options.addArguments('--lang=vi');
     // options.addArguments('--headless', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage'); // Uncomment nếu cần chạy headless
     const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
     await driver.manage().setTimeouts({ implicit: 5000 });
