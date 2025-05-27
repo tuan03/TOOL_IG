@@ -67,9 +67,14 @@ async function openInstagramSignup(account, proxy = null) {
         await sleep(1000);
         await fillData(driver, '//input[@name="fullName"]', name);
 
-        await sleep(1000);
-        const username = generateRandomUsername(account.email);
-        await fillData(driver, '//input[@name="username"]', username);
+        await sleep(2000);
+        try{
+        await clickButton(driver, "//button[.//span[text()='Làm mới đề xuất']]")
+        }catch (e) {
+            const username = generateRandomUsername(account.email);
+            await fillData(driver, '//input[@name="username"]', username);
+        }
+        
         // await clickButton(driver, "//button[.//span[text()='Làm mới đề xuất']]")
         await scrollToBottom(driver);
         await sleep(1000);
