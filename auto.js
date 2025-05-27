@@ -2,11 +2,11 @@ const { Builder, By, until, Key } = require('selenium-webdriver');
 const { generateVietnameseName,
     generateStrongPassword,
     appendLog,
-    runGetMail, waitForOTPWithTimeout } = require("./utils/gen.js");
+    generateRandomUsername, waitForOTPWithTimeout } = require("./utils/gen.js");
 
 require('chromedriver');
 const chrome = require('selenium-webdriver/chrome');
-const { run } = require('node:test');
+
 async function fillData(driver, xpath, text) {
     const input = await driver.wait(
         until.elementLocated(By.xpath(xpath)),
@@ -39,9 +39,15 @@ async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function openInstagramSignup(account) {
+async function openInstagramSignup(account, proxy = null) {
     let options = new chrome.Options();
     options.addArguments('--lang=vi');
+    if (proxy) {
+        console.log(`Sử dụng proxy: ${proxy}`);
+        options.addArguments(`--proxy-server=http://${proxy}`);
+        options.addArguments('--ignore-certificate-errors');
+        options.addArguments('--allow-insecure-localhost');
+    }
     // options.addArguments('--headless', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage'); // Uncomment nếu cần chạy headless
     const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
     await driver.manage().setTimeouts({ implicit: 5000 });
@@ -62,7 +68,9 @@ async function openInstagramSignup(account) {
         await fillData(driver, '//input[@name="fullName"]', name);
 
         await sleep(1000);
-        await clickButton(driver, "//button[.//span[text()='Làm mới đề xuất']]")
+        const username = generateRandomUsername(account.email);
+        await fillData(driver, '//input[@name="username"]', username);
+        // await clickButton(driver, "//button[.//span[text()='Làm mới đề xuất']]")
         await scrollToBottom(driver);
         await sleep(1000);
         await clickButton(driver, "//button[@type='submit' and text()='Đăng ký']")
@@ -81,11 +89,11 @@ async function openInstagramSignup(account) {
         );
         const daySelect = await driver.wait(
             until.elementLocated(By.css('select[title="Ngày:"]')),
-            10000
+            5000
         );
         const yearSelect = await driver.wait(
             until.elementLocated(By.css('select[title="Năm:"]')),
-            10000
+            5000
         );
 
         await monthSelect.click();
@@ -121,29 +129,36 @@ async function openInstagramSignup(account) {
             await fillData(driver, '//input[@name="email_confirmation_code"]', otp);
             await clickButton(driver, "//div[@role='button' and text()='Tiếp']");
             await sleep(5000); // Chờ 5 giây để trang tải
-            try {
-                // Chờ xem có span chứa text "Mã không hợp lệ..."
-                await driver.wait(until.elementLocated(By.xpath("//span[text()='Mã không hợp lệ. Bạn có thể yêu cầu mã mới.']")), 5000);
+            const start = Date.now();
+            while (true) {
+                try {
+                    // Chờ xem có span chứa text "Mã không hợp lệ..."
+                    await driver.wait(until.elementLocated(By.xpath("//span[text()='Mã không hợp lệ. Bạn có thể yêu cầu mã mới.']")), 5000);
 
-                // Nếu có thì tìm nút "Gửi lại mã." và click
-                const resendButton = await driver.findElement(By.xpath("//div[contains(text(), 'Gửi lại mã')]"));
-                await resendButton.click();
-                await sleep(15000); // Chờ 15 giây để trang tải
-                const otp = await waitForOTPWithTimeout(account, 240000, 10000);
-                await fillData(driver, '//input[@name="email_confirmation_code"]', otp);
-                await clickButton(driver, "//div[@role='button' and text()='Tiếp']");
-                await sleep(5000); // Chờ 5 giây để trang tải
-            } catch (e) {
+                    // Nếu có thì tìm nút "Gửi lại mã." và click
+                    const resendButton = await driver.findElement(By.xpath("//div[contains(text(), 'Gửi lại mã')]"));
+                    await resendButton.click();
+                    await sleep(15000); // Chờ 15 giây để trang tải
+                    const otp = await waitForOTPWithTimeout(account, 240000, 10000);
+                    await fillData(driver, '//input[@name="email_confirmation_code"]', otp);
+                    await clickButton(driver, "//div[@role='button' and text()='Tiếp']");
+                    await sleep(5000); // Chờ 5 giây để trang tải
+                } catch (e) {
+                    break;
+                }
+                if (Date.now() - start > 30000) {
+                    throw new Error('Đợi OTP Đã vượt quá 30 giây');
+                }
             }
             try {
                 await driver.wait(
-                until.elementLocated(By.xpath("//span[text()='Rất tiếc, đã xảy ra sự cố khi tạo tài khoản của bạn. Hãy thử lại trong chút nữa.']")),
-                5000 // thời gian chờ tối đa 5 giây
+                    until.elementLocated(By.xpath("//span[text()='Rất tiếc, đã xảy ra sự cố khi tạo tài khoản của bạn. Hãy thử lại trong chút nữa.']")),
+                    10000 // thời gian chờ tối đa 10 giây
                 );
                 appendLog(`${account.email}`, 'logs/accSpam.txt');
-                return true;
+                throw new Error('Tài khoản bị spam');
             } catch (err) {
-                
+
             }
 
             appendLog(`${account.email} | ${password} | Nhập thành công: ${otp}`, 'logs/accSuccessOTP.txt');

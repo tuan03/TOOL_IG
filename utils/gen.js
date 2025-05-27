@@ -65,8 +65,7 @@ function appendLog(message, logFile = 'logs/logs.txt') {
     if (!fs.existsSync(logDir)) {
         fs.mkdirSync(logDir, { recursive: true });
     }
-    const timestamp = new Date().toISOString();
-    const logEntry = `[${timestamp}] ${message}\n`;
+    const logEntry = `${message}\n`;
 
     fs.appendFile(logFile, logEntry, (err) => {
         if (err) {
@@ -126,7 +125,24 @@ async function waitForOTPWithTimeout(account, timeoutMs = 120000, intervalMs = 6
     }, intervalMs); // mỗi 5s kiểm tra 1 lần
   });
 }
-module.exports = {
+function generateRandomUsername(email) {
+  const username = email.split('@')[0];
+
+  // Hàm tạo chuỗi random gồm chữ cái và số
+  function randomString(length) {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  const prefixLength = Math.floor(Math.random() * 2) + 4; // 4 hoặc 5
+  const suffixLength = Math.floor(Math.random() * 2) + 4; // 4 hoặc 5
+
+  const prefix = randomString(prefixLength);
+  const suffix = randomString(suffixLength);
+
+  return prefix + username + suffix;
+}
+module.exports = {generateRandomUsername,
   generateVietnameseName,
   generateStrongPassword,
   appendLog,
