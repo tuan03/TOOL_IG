@@ -8,6 +8,7 @@ require('chromedriver');
 const chrome = require('selenium-webdriver/chrome');
 
 async function fillData(driver, xpath, text) {
+
     const input = await driver.wait(
         until.elementLocated(By.xpath(xpath)),
         10000
@@ -22,7 +23,7 @@ async function fillData(driver, xpath, text) {
 async function clickButton(driver, xpath) {
     const button = await driver.wait(
         until.elementLocated(By.xpath(xpath)),
-        10000
+        7000
     );
     await button.click();
 
@@ -39,9 +40,11 @@ async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function openInstagramSignup(account, proxy = null) {
+async function openInstagramSignup(account, proxy = null, profile) {
     let options = new chrome.Options();
     options.addArguments('--lang=vi');
+    
+    options.addArguments(`--user-data-dir=${profile}`);
     if (proxy) {
         console.log(`Sử dụng proxy: ${proxy}`);
         options.addArguments(`--proxy-server=http://${proxy}`);
@@ -60,6 +63,7 @@ async function openInstagramSignup(account, proxy = null) {
 
         await driver.get('https://www.instagram.com/accounts/emailsignup');
 
+        
         await fillData(driver, '//input[@name="emailOrPhone"]', account.email);
         await sleep(1000);
         await fillData(driver, '//input[@name="password"]', password);
@@ -82,9 +86,9 @@ async function openInstagramSignup(account, proxy = null) {
         await sleep(2000);
         await scrollToTop(driver);
 
-        await driver.wait(until.elementLocated(By.css('select[title="Tháng:"]')), 10000);
-        await driver.wait(until.elementLocated(By.css('select[title="Ngày:"]')), 10000);
-        await driver.wait(until.elementLocated(By.css('select[title="Năm:"]')), 10000);
+        await driver.wait(until.elementLocated(By.css('select[title="Tháng:"]')), 5000);
+        await driver.wait(until.elementLocated(By.css('select[title="Ngày:"]')), 5000);
+        await driver.wait(until.elementLocated(By.css('select[title="Năm:"]')), 5000);
 
 
 
@@ -161,9 +165,8 @@ async function openInstagramSignup(account, proxy = null) {
                     10000 // thời gian chờ tối đa 10 giây
                 );
                 appendLog(`${account.email}`, 'logs/accSpam.txt');
-                throw new Error('Tài khoản bị spam');
+                return;
             } catch (err) {
-
             }
 
             appendLog(`${account.email} | ${password} | Nhập thành công: ${otp}`, 'logs/accSuccessOTP.txt');
@@ -177,17 +180,19 @@ async function openInstagramSignup(account, proxy = null) {
             appendLog(`${account.email} | ${password} | Nhập thành công: ${otp}`, 'logs/accSuccessDone.txt');
         } catch (error) {
             appendLog(`${account.email} | ${error.message}`, 'logs/accFails.txt');
-            console.error('Không nhận được mã OTP trong thời gian chờ');
             throw new Error(`Không nhận được mã OTP trong thời gian chờ cho tài khoản: ${account.email}`);
-            return;
         }
 
     } catch (err) {
         console.error('Lỗi:', err);
+        await sleep(5000);
+        await driver.quit()
         throw new Error(`Không thể đăng ký tài khoản: ${account.email}. Lỗi: ${err.message}`);
     } finally {
         // Đóng trình duyệt sau 10s hoặc bạn có thể comment để giữ mở
-        setTimeout(() => driver.quit(), 5000);
+        await sleep(5000);
+        await driver.quit()
+        
     }
 }
 

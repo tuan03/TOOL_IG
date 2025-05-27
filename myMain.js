@@ -1,4 +1,4 @@
-const fs = require('fs');
+const fs = require('fs-extra')
 const fetch = require('node-fetch');
 const data = fs.readFileSync('accounts.txt', 'utf-8');
 const accounts = data
@@ -19,10 +19,10 @@ const { openInstagramSignup } = require('./auto.js'); // Giả sử bạn đã �
 // (accounts[3]);
 // openInstagramSignup(accounts[0])
 const myProxy = [{
-  proxy: '116.97.200.204:23228',
+  proxy: null,
   linkChange: 'https://api.enode.vn/getip/9995369a8e0ffe8dad010b002bd7e8f0bad8f5c6',
 }, {
-  proxy: '117.0.200.236:60817',
+  proxy: null,
   linkChange: 'https://api.enode.vn/getip/4c9ea74ca50bbacb8d4bc11bfbb965722ca2920e', // Thay thế bằng link thực tế để đổi IP
 }]
 
@@ -63,9 +63,6 @@ async function getNextProxy() {
       console.log(`✅ Selected optimal proxy: ${minProxy.proxy} (Tasks: ${minProxy.taskIsHas})`);
       return minProxy;
     }
-
-    // Không có proxy hợp lệ, đợi 5s rồi thử lại
-    console.log('⏳ No suitable proxies. Retrying in 5s...');
     await delay(5000);
   }
 }
@@ -135,11 +132,18 @@ async function processNext() {
   runningCount++;
   const currentProxy = await getNextProxy();
   currentProxy.taskIsHas++;
-  openInstagramSignup(account, currentProxy.proxy).catch(async (e) => {
+  const profile = `D:/TEMP_CHROME/chrome_${Date.now()}`;
+  openInstagramSignup(account, currentProxy.proxy,profile).catch(async (e) => {
     accounts.push(account); // Đưa lại tài khoản vào cuối danh sách
   }).finally(async () => {
     runningCount--;
     currentProxy.taskDone++;
+    try{
+      await fs.remove(profile);
+      console.log(`Đã xóa profile: ${profile}`)
+    } catch(e){
+      console.log("tickkkkk",e)
+    }
     console.log(`✅ Finished processing account: ${account.email} | Proxy: ${currentProxy.proxy}`);
     processNext();
   });
