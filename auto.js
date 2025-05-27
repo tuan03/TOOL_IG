@@ -178,11 +178,13 @@ async function openInstagramSignup(account, proxy = null) {
         } catch (error) {
             appendLog(`${account.email} | ${error.message}`, 'logs/accFails.txt');
             console.error('Không nhận được mã OTP trong thời gian chờ');
+            throw new Error(`Không nhận được mã OTP trong thời gian chờ cho tài khoản: ${account.email}`);
             return;
         }
 
     } catch (err) {
         console.error('Lỗi:', err);
+        throw new Error(`Không thể đăng ký tài khoản: ${account.email}. Lỗi: ${err.message}`);
     } finally {
         // Đóng trình duyệt sau 10s hoặc bạn có thể comment để giữ mở
         setTimeout(() => driver.quit(), 5000);

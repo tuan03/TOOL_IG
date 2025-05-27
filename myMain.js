@@ -138,7 +138,9 @@ async function processNext() {
   runningCount++;
   const currentProxy = await getNextProxy();
   currentProxy.taskIsHas++;
-  openInstagramSignup(account, currentProxy.proxy).finally(async () => {
+  openInstagramSignup(account, currentProxy.proxy).catch(async (e) => {
+    accounts.push(account); // Đưa lại tài khoản vào cuối danh sách
+  }).finally(async () => {
     runningCount--;
     currentProxy.taskDone++;
     console.log(`✅ Finished processing account: ${account.email} | Proxy: ${currentProxy.proxy}`);
