@@ -48,9 +48,6 @@ async function delay(ms) {
 async function getNextProxy() {
   while (true) {
     // Ưu tiên tìm proxy chưa đầy (taskIsHas < TASKS_PER_PROXY)
-    const availableProxy = proxyState.find(
-      proxy => proxy.taskIsHas < TASKS_PER_PROXY && !proxy.isWaiting
-    );
     const availableProxies = proxyState.filter(
       proxy => !proxy.isWaiting && proxy.taskIsHas < TASKS_PER_PROXY
     );
