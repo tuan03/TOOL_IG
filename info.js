@@ -22,7 +22,13 @@ const filteredAccounts = accounts.filter(line => {
   return successEmails.has(email);
 });
 
+const filteredAccountsError = accounts.filter(line => {
+  const email = line.split('|')[0].trim();
+  return !successEmails.has(email);
+});
+
 // Ghi ra file mới hoặc ghi đè lại accounts.txt
-fs.writeFileSync('accounts_res.txt', filteredAccounts.join('\n'), 'utf-8');
+fs.writeFileSync('accounts_success.txt', filteredAccounts.join('\n'), 'utf-8');
+fs.writeFileSync('accounts_error.txt', filteredAccountsError.join('\n'), 'utf-8');
 
 console.log(`Đã lọc xong. Còn lại ${filteredAccounts.length} dòng.`);
