@@ -43,7 +43,7 @@ async function sleep(ms) {
 async function openInstagramSignup(account, proxy = null, profile) {
     let options = new chrome.Options();
     options.addArguments('--lang=vi');
-    
+
     options.addArguments(`--user-data-dir=${profile}`);
     if (proxy) {
         console.log(`Sử dụng proxy: ${proxy}`);
@@ -63,7 +63,7 @@ async function openInstagramSignup(account, proxy = null, profile) {
 
         await driver.get('https://www.instagram.com/accounts/emailsignup');
 
-        
+
         await fillData(driver, '//input[@name="emailOrPhone"]', account.email);
         await sleep(1000);
         await fillData(driver, '//input[@name="password"]', password);
@@ -72,13 +72,13 @@ async function openInstagramSignup(account, proxy = null, profile) {
         await fillData(driver, '//input[@name="fullName"]', name);
 
         await sleep(2000);
-        try{
-        await clickButton(driver, "//button[.//span[text()='Làm mới đề xuất']]")
-        }catch (e) {
+        try {
+            await clickButton(driver, "//button[.//span[text()='Làm mới đề xuất']]")
+        } catch (e) {
             const username = generateRandomUsername(account.email);
             await fillData(driver, '//input[@name="username"]', username);
         }
-        
+
         // await clickButton(driver, "//button[.//span[text()='Làm mới đề xuất']]")
         await scrollToBottom(driver);
         await sleep(1000);
@@ -159,25 +159,47 @@ async function openInstagramSignup(account, proxy = null, profile) {
                     throw new Error('Đợi OTP Đã vượt quá 30 giây');
                 }
             }
-            try {
-                await driver.wait(
-                    until.elementLocated(By.xpath("//span[text()='Rất tiếc, đã xảy ra sự cố khi tạo tài khoản của bạn. Hãy thử lại trong chút nữa.']")),
-                    10000 // thời gian chờ tối đa 10 giây
-                );
-                appendLog(`${account.email}`, 'logs/accSpam.txt');
-                return;
-            } catch (err) {
-            }
-
-            appendLog(`${account.email} | ${password} | Nhập thành công: ${otp}`, 'logs/accSuccessOTP.txt');
-            await sleep(8000);
             const targetUrl = 'https://www.instagram.com/';
-            await driver.wait(async () => {
+            const startTime = Date.now();
+            const text1 = 'Địa chỉ IP bạn đang dùng đã được gắn cờ là một proxy mở';
+            const text2 = 'Rất tiếc, đã xảy ra sự cố khi tạo tài khoản của bạn'
+            const TIMEOUT = 5000
+            while ((Date.now() - startTime) < 180000) {
                 const currentUrl = await driver.getCurrentUrl();
-                return currentUrl === targetUrl;
-            }, 3 * 60 * 1000); // timeout: 3 phút (đơn vị là ms)
-            console.log(`✅ Đăng ký thành công cho tài khoản: ${account.email}`);
-            appendLog(`${account.email} | ${password} | Nhập thành công: ${otp}`, 'logs/accSuccessDone.txt');
+
+                // Kiểm tra URL hiện tại
+                if (currentUrl === targetUrl ||currentUrl.includes('https://www.instagram.com/accounts/suspended')) {
+                    console.log(`✅ Đăng ký thành công cho tài khoản: ${account.email}`);
+                    appendLog(`${account.email} | ${password} | Nhập thành công: ${otp}`, 'logs/accSuccessDone.txt');
+                    return
+                }
+                try{
+                    const el0 = await driver.wait(until.elementLocated(By.xpath("//span[text()='Mã không hợp lệ. Bạn có thể yêu cầu mã mới.']")), TIMEOUT);
+                    break;
+                }catch(e){
+
+                }
+                try {
+                    const el1 = await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(), "${text1}")]`)), TIMEOUT);
+                    if (el1) {
+                        await clickButton(driver, "//div[@role='button' and text()='Tiếp']");
+                    }
+                } catch (e) {
+                }
+
+
+                try {
+                    const el2 = await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(), "${text2}")]`)), TIMEOUT);
+                    if (el2) {
+                        appendLog(`${account.email}`, 'logs/accSpam.txt');
+                        return;
+                    }
+                } catch (e) {
+
+                }
+
+            }
+            throw new Error(`Có lỗi xảy ra khi tạo tài khoản, sẽ runback ${account.email}`)
         } catch (error) {
             appendLog(`${account.email} | ${error.message}`, 'logs/accFails.txt');
             throw new Error(`Không nhận được mã OTP trong thời gian chờ cho tài khoản: ${account.email}`);
@@ -185,14 +207,15 @@ async function openInstagramSignup(account, proxy = null, profile) {
 
     } catch (err) {
         console.error('Lỗi:', err);
-        await sleep(5000);
+        await sleep(2000);
         await driver.quit()
         throw new Error(`Không thể đăng ký tài khoản: ${account.email}. Lỗi: ${err.message}`);
     } finally {
         // Đóng trình duyệt sau 10s hoặc bạn có thể comment để giữ mở
-        await sleep(5000);
+        await sleep(2000);
         await driver.quit()
-        
+        await sleep(1000);
+
     }
 }
 
